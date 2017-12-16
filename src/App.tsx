@@ -1,5 +1,9 @@
 import * as React from 'react';
 import './App.css';
+import MuiThemeProvider from 'material-ui/styles/MuiThemeProvider';
+import Chip from 'material-ui/Chip';
+import TextField from 'material-ui/TextField';
+import RaisedButton from 'material-ui/RaisedButton';
 
 interface PostInfo {
     author: string;
@@ -26,48 +30,102 @@ interface PostInfo {
     visited: boolean;
 }
 
-// function Post(props: {info: PostInfo}) {
-
-//     console.log(props);
-//     const info = props.info;
-//     return <div><a href={info.url}>{info.title}</a></div>;
-// }
+interface AppState {
+  subreddits: string[];
+  posts: PostInfo[];
+}
 
 class App extends React.Component {
 
-  public state: {
-    reddits: string[];
-    posts: PostInfo[];
-  } = {
-    reddits: ['news'],
+  private subreddits = ['news'];
+  public state: AppState = {
+    subreddits: this.subreddits,
     posts: [],
   };
+
   constructor(props: {}) {
     super(props);
     this.updatePosts();
   }
 
+  removeSubreddit(subreddit: string) {
+    this.subreddits.splice(this.subreddits.indexOf(subreddit), 1);
+    this.updatedSubreddits();
+    this.updatePosts();
+  }
+
+  addSubreddit(subreddit: string) {
+    this.subreddits.push(subreddit);
+    this.updatedSubreddits();
+    this.updatePosts();
+  }
+
+  updatedSubreddits() {
+    this.setState({subreddits: this.subreddits});
+  }
+
   updatePosts() {
-    fetch(`https://www.reddit.com/r/${this.state.reddits.join('+')}/hot.json`)
+    window.console.log('updating posts: ', this.subreddits);
+    if (this.subreddits.length === 0) {
+      this.setState({posts: []});
+      return;
+    }
+
+    fetch(`https://www.reddit.com/r/${this.state.subreddits.join('+')}/hot.json`)
     .then(response => response.json())
-    .then(blob => {
-      window.console.log(blob);
+    .then((blob) => {
+      if (blob.error) {
+        window.alert(`error:  ${ blob.error}`);
+        return;
+      }
+
       this.setState({posts: blob.data.children.map((c: {data: PostInfo}) => c.data)});
     });
   }
 
   render() {
+
     return (
       <div className="App">
-        <div className="App-header">
-          {this.state.reddits.map(reddit => <span key={reddit} >{reddit}</span>)}
+        <AddSubreddit onNewSubreddit={s => this.addSubreddit(s)} />
+        <div className="App-header" >
+          {this.state.subreddits.map((s, index) => (
+            <Chip key={index} onRequestDelete={(event: {}) => this.removeSubreddit(s)} >{s}</Chip>
+          ))}
         </div>
         <div>
-          {this.state.posts.map(post => <div key={post.id} ><a href={post.url}>{post.title}</a></div>)}
+          {this.state.posts.map(post => <Post key={post.id} info={post} />)}
         </div>
       </div>
     );
   }
 }
 
-export default App;
+function AddSubreddit(props: {onNewSubreddit: (subreddit: string) => void}) {
+  let textElement: TextField | null;
+
+  return (
+    <div>
+      <TextField name="newSubredditName" ref={(f) => {textElement = f; }}/>
+      <RaisedButton onClick={() => {
+        if (textElement) {
+          props.onNewSubreddit(textElement.getValue());
+        }
+      }}>Add</RaisedButton>
+    </div>
+  );
+}
+
+function Post(props: {info: PostInfo}) {
+  return (
+    <div>
+      <a href={props.info.url} >{props.info.title}</a>
+    </div>
+  );
+}
+
+export default () => (
+  <MuiThemeProvider>
+    <App />
+  </MuiThemeProvider>
+);
