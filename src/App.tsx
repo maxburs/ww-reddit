@@ -4,6 +4,7 @@ import MuiThemeProvider from 'material-ui/styles/MuiThemeProvider';
 import Chip from 'material-ui/Chip';
 import TextField from 'material-ui/TextField';
 import RaisedButton from 'material-ui/RaisedButton';
+import { Card, CardText, CardTitle } from 'material-ui/Card';
 
 interface PostInfo {
     author: string;
@@ -15,8 +16,6 @@ interface PostInfo {
     permalink: string;
     pinned: boolean;
     score: number;
-    // secure_media: null
-    // secure_media_embed: {}
     spoiler: boolean;
     stickied: boolean;
     subreddit: string;
@@ -65,7 +64,6 @@ class App extends React.Component {
   }
 
   updatePosts() {
-    window.console.log('updating posts: ', this.subreddits);
     if (this.subreddits.length === 0) {
       this.setState({posts: []});
       return;
@@ -79,7 +77,9 @@ class App extends React.Component {
         return;
       }
 
-      this.setState({posts: blob.data.children.map((c: {data: PostInfo}) => c.data)});
+      this.setState({
+        posts: blob.data.children.map((c: {data: PostInfo}) => c.data)
+      });
     });
   }
 
@@ -88,11 +88,10 @@ class App extends React.Component {
     return (
       <div className="App">
         <AddSubreddit onNewSubreddit={s => this.addSubreddit(s)} />
-        <div className="App-header" >
-          {this.state.subreddits.map((s, index) => (
-            <Chip key={index} onRequestDelete={(event: {}) => this.removeSubreddit(s)} >{s}</Chip>
-          ))}
-        </div>
+        <Subreddits
+          subreddits={this.state.subreddits}
+          removeSubreddit={(s) => this.removeSubreddit(s)}
+          />
         <div>
           {this.state.posts.map(post => <Post key={post.id} info={post} />)}
         </div>
@@ -101,26 +100,84 @@ class App extends React.Component {
   }
 }
 
-function AddSubreddit(props: {onNewSubreddit: (subreddit: string) => void}) {
-  let textElement: TextField | null;
+function Subreddits(
+  props: {
+    subreddits: string[];
+    removeSubreddit: (subreddit: string) => void;
+  }
+) {
+  const style = {
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    margin: '10px 0px',
+  };
 
   return (
-    <div>
-      <TextField name="newSubredditName" ref={(f) => {textElement = f; }}/>
-      <RaisedButton onClick={() => {
-        if (textElement) {
-          props.onNewSubreddit(textElement.getValue());
-        }
-      }}>Add</RaisedButton>
+    <div style={style as {}} >
+    {props.subreddits.map((s, index) => (
+      <Chip
+        key={index}
+        onRequestDelete={() => props.removeSubreddit(s)}
+        >{s}</Chip>
+    ))}
+  </div>
+  );
+}
+
+function AddSubreddit(
+  props: {
+    onNewSubreddit: (subreddit: string) => void
+  }
+) {
+  let textElement: TextField | null;
+
+  const style = {
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center'
+  };
+
+  const submit = () => {
+    if (textElement) {
+      props.onNewSubreddit(textElement.getValue());
+    }
+  };
+
+  // note: typing is broken for flexDirection
+  return (
+    <div style={style as {}} >
+      <TextField
+        name="newSubredditName"
+        hintText="subreddit"
+        ref={(f) => {textElement = f; }}
+        style={{marginRight: '10px'}}
+        onKeyUp={(event) => {
+          window.console.log(event.keyCode);
+          if (event.keyCode === 13) {
+            event.preventDefault();
+            submit();
+          }
+        }}
+      />
+      <RaisedButton onClick={submit}>Add</RaisedButton>
     </div>
   );
 }
 
 function Post(props: {info: PostInfo}) {
+  const cardStyle = {
+    margin: '5px 0px'
+  };
+
   return (
-    <div>
-      <a href={props.info.url} >{props.info.title}</a>
-    </div>
+    <a style={{textDecoration: 'none'}} href={props.info.url} >
+      <Card style={cardStyle}>
+        <CardTitle>{props.info.score}</CardTitle>
+        <CardText>{props.info.title}</CardText>
+      </Card>
+    </a>
   );
 }
 
